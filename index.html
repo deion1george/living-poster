@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#111114" />
+    <title>Battle of the Boroughs · B-Boy London</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="ar"></div>
+
+    <section id="screen-start" class="screen">
+      <div class="card">
+        <p class="eyebrow">Battle of the Boroughs</p>
+        <h1>B-Boy London</h1>
+        <p>Point your camera at the poster and watch it come alive. Turn your sound on.</p>
+        <button id="btn-start" class="btn">Tap to start</button>
+        <p class="fine">We'll ask to use your camera. Nothing is recorded or uploaded.</p>
+      </div>
+    </section>
+
+    <section id="screen-loading" class="screen" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="loading-text">Getting ready…</p>
+    </section>
+
+    <section id="screen-error" class="screen" hidden>
+      <div class="card">
+        <h2 id="error-title"></h2>
+        <p id="error-body"></p>
+        <button id="btn-error" class="btn" hidden></button>
+      </div>
+    </section>
+
+    <div id="hud" hidden>
+      <div id="scan-hint">
+        <div class="frame" aria-hidden="true"></div>
+        <p>Point your camera at the poster</p>
+      </div>
+      <button id="btn-mute" class="icon-btn" aria-label="Mute">
+        <svg id="ico-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg id="ico-muted" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9l6 6M22 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Compile image target</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; line-height: 1.5; }
+      img { max-width: 100%; max-height: 300px; display: block; margin: 12px 0; }
+      progress { width: 100%; }
+    </style>
+  </head>
+  <body>
+    <h1>Compile image target</h1>
+    <p>Pick the exact final poster art (the tracked area only, without the QR margin). This makes
+      <code>targets.mind</code>; put it in <code>public/</code>.</p>
+    <input type="file" id="file" accept="image/*" />
+    <img id="preview" hidden />
+    <progress id="progress" max="100" value="0" hidden></progress>
+    <p id="status"></p>
+    <script type="module">
+      import { Compiler } from 'mind-ar/dist/mindar-image.prod.js';
+
+      const $ = (id) => document.getElementById(id);
+
+      // Exposed so the build can be scripted with a headless browser.
+      window.compileTarget = async (url) => {
+        const img = new Image();
+        img.src = url;
+        await img.decode();
+        $('preview').src = url;
+        $('preview').hidden = false;
+        $('progress').hidden = false;
+        const compiler = new Compiler();
+        const t0 = performance.now();
+        await compiler.compileImageTargets([img], (p) => ($('progress').value = p));
+        const data = await compiler.exportData();
+        $('status').textContent = `Done in ${((performance.now() - t0) / 1000).toFixed(1)}s, ${(data.byteLength / 1024).toFixed(0)} KB.`;
+        return data;
+      };
+
+      $('file').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        $('status').textContent = 'Compiling… (can take a minute)';
+        const data = await window.compileTarget(URL.createObjectURL(file));
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([data]));
+        a.download = 'targets.mind';
+        a.click();
+      });
+    </script>
+  </body>
+</html>
