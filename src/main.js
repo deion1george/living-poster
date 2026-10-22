@@ -38,6 +38,11 @@ const ERRORS = {
     body: 'Another app is using the camera. Close it and try again.',
     action: 'Try again',
   },
+  oldDevice: {
+    title: 'Update needed',
+    body: "This browser can't run the AR experience. Update your phone (Settings → General → Software Update), or try Chrome.",
+    action: 'Copy link',
+  },
   generic: {
     title: 'Something went wrong',
     body: 'Please reload the page and try again.',
@@ -50,6 +55,8 @@ function showError(key, detail) {
   if (detail) console.error(detail);
   $('error-title').textContent = e.title;
   $('error-body').textContent = e.body;
+  // Show the technical reason in small print so testers can report it.
+  $('error-detail').textContent = detail ? `${detail.name || 'Error'}: ${detail.message || detail}` : '';
   const btn = $('btn-error');
   btn.hidden = !e.action;
   btn.textContent = e.action ?? '';
@@ -79,6 +86,7 @@ function preflight() {
   if (isInAppBrowser()) return 'inApp';
   if (!window.isSecureContext) return 'insecure';
   if (!navigator.mediaDevices?.getUserMedia) return 'unsupported';
+  if (!document.createElement('canvas').getContext('webgl2')) return 'oldDevice';
   return null;
 }
 
@@ -247,11 +255,19 @@ async function start() {
   $('hud').hidden = false;
 }
 
+window.__appReady = true;
 const blocker = preflight();
 if (blocker) {
   showError(blocker);
 } else {
   // Warm the cache for the tracking data while the start screen is up.
   fetch(config.targetSrc).catch(() => {});
-  $('btn-start').addEventListener('click', start, { once: true });
+  const btn = $('btn-start');
+  btn.textContent = 'Tap to start';
+  btn.disabled = false;
+  btn.addEventListener(
+    'click',
+    () => start().catch((err) => showError('generic', err)),
+    { once: true },
+  );
 }

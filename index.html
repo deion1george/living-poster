@@ -15,7 +15,7 @@
         <p class="eyebrow">Battle of the Boroughs</p>
         <h1>B-Boy London</h1>
         <p>Point your camera at the poster and watch it come alive. Turn your sound on.</p>
-        <button id="btn-start" class="btn">Tap to start</button>
+        <button id="btn-start" class="btn" disabled>Loading…</button>
         <p class="fine">We'll ask to use your camera. Nothing is recorded or uploaded.</p>
       </div>
     </section>
@@ -30,6 +30,7 @@
         <h2 id="error-title"></h2>
         <p id="error-body"></p>
         <button id="btn-error" class="btn" hidden></button>
+        <p id="error-detail" class="fine"></p>
       </div>
     </section>
 
@@ -44,6 +45,18 @@
       </button>
     </div>
 
+    <script>
+      // Classic script: runs even on browsers too old to load the app module,
+      // so the start button never just sits there doing nothing.
+      setTimeout(function () {
+        if (window.__appReady) return;
+        var b = document.getElementById('btn-start');
+        b.disabled = false;
+        b.textContent = 'Reload';
+        b.onclick = function () { location.reload(); };
+        b.insertAdjacentHTML('afterend', '<p class="fine" style="color:#f7b225">Still loading. Check your connection and tap Reload. If this keeps happening, update your phone (Settings → General → Software Update) or try Chrome.</p>');
+      }, 20000);
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
