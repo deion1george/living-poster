@@ -1,12 +1,8 @@
-// Everything you'd change when swapping in the final poster and footage lives here.
+import { posters } from './posters.js';
+
+// Shared settings. Per-poster files live in public/posters/<slug>/.
 export const config = {
-  // Compiled image target (see README: "Compile the target").
-  targetSrc: '/targets.mind',
-  // Exact final artwork used for the target. Shown on top of the tracked
-  // poster and faded out into the video the first time it's found.
-  posterSrc: '/media/poster.jpg',
-  // H.264/AAC MP4, faststart, cropped to the same aspect ratio as the poster art.
-  videoSrc: '/media/clip.mp4',
+  event: 'Battle of the Boroughs',
   loop: true,
 
   // MindAR smoothing. Lower filterMinCF / filterBeta = less jitter but more lag.
@@ -21,3 +17,20 @@ export const config = {
   firstRevealMs: 1200, // poster -> video transition, first find only
   refindFadeMs: 250,
 };
+
+// The poster for the current URL path, with its asset paths, or null.
+export function currentPoster() {
+  const slug = location.pathname.split('/').filter(Boolean)[0]?.toLowerCase();
+  const p = posters.find((x) => x.slug === slug);
+  if (!p) return null;
+  const dir = `/posters/${p.slug}`;
+  return {
+    ...p,
+    // Exact final print artwork used for the target; shown over the tracked
+    // poster and faded into the video the first time it's found.
+    posterSrc: `${dir}/poster.jpg`,
+    // H.264/AAC MP4, faststart, cropped to the poster's aspect ratio.
+    videoSrc: `${dir}/video.mp4`,
+    targetSrc: `${dir}/target.mind`,
+  };
+}

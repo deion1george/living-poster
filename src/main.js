@@ -1,8 +1,9 @@
 import { Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace, TextureLoader, VideoTexture } from 'three';
-import { config } from './config.js';
+import { config, currentPoster } from './config.js';
 import { ImageTracker } from './ar.js';
 
 const $ = (id) => document.getElementById(id);
+const poster = currentPoster();
 const screens = ['screen-start', 'screen-loading', 'screen-error'];
 const show = (id) => screens.forEach((s) => ($(s).hidden = s !== id));
 
@@ -42,6 +43,10 @@ const ERRORS = {
     title: 'Update needed',
     body: "This browser can't run the AR experience. Update your phone (Settings → General → Software Update), or try Chrome.",
     action: 'Copy link',
+  },
+  notFound: {
+    title: 'Scan a poster',
+    body: 'Scan the QR code on one of the Battle of the Boroughs posters to bring it to life.',
   },
   generic: {
     title: 'Something went wrong',
@@ -121,7 +126,7 @@ function trackingSettings() {
 
 // ---------- Video ----------
 const video = document.createElement('video');
-video.src = config.videoSrc;
+if (poster) video.src = poster.videoSrc;
 video.loop = config.loop;
 video.preload = 'auto';
 video.crossOrigin = 'anonymous';
@@ -166,7 +171,7 @@ function buildContent(tracker) {
   const videoMat = new MeshBasicMaterial({ map: videoTex, transparent: true, opacity: 0 });
   const videoPlane = new Mesh(geo, videoMat);
 
-  const posterTex = new TextureLoader().load(config.posterSrc);
+  const posterTex = new TextureLoader().load(poster.posterSrc);
   posterTex.colorSpace = SRGBColorSpace;
   const posterMat = new MeshBasicMaterial({ map: posterTex, transparent: true, opacity: 1, depthWrite: false });
   const posterPlane = new Mesh(geo, posterMat);
@@ -227,7 +232,7 @@ async function start() {
   const audio = unlockAudio();
   const tracker = new ImageTracker({
     container: $('ar'),
-    targetSrc: config.targetSrc,
+    targetSrc: poster.targetSrc,
     tracking: trackingSettings(),
   });
   $('loading-text').textContent = 'Starting camera…';
@@ -256,12 +261,16 @@ async function start() {
 }
 
 window.__appReady = true;
-const blocker = preflight();
+const blocker = poster ? preflight() : 'notFound';
+if (poster) {
+  $('poster-name').textContent = poster.name;
+  document.title = `${poster.name} · ${config.event}`;
+}
 if (blocker) {
   showError(blocker);
 } else {
   // Warm the cache for the tracking data while the start screen is up.
-  fetch(config.targetSrc).catch(() => {});
+  fetch(poster.targetSrc).catch(() => {});
   const btn = $('btn-start');
   btn.textContent = 'Tap to start';
   btn.disabled = false;

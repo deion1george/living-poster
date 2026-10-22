@@ -13,7 +13,7 @@
   <body>
     <h1>Compile image target</h1>
     <p>Pick the exact final poster art (the tracked area only, without the QR margin). This makes
-      <code>targets.mind</code>; put it in <code>public/</code>.</p>
+      <code>target.mind</code>; put it in <code>public/posters/&lt;slug&gt;/</code>.</p>
     <input type="file" id="file" accept="image/*" />
     <img id="preview" hidden />
     <progress id="progress" max="100" value="0" hidden></progress>
@@ -46,7 +46,7 @@
         const data = await window.compileTarget(URL.createObjectURL(file));
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([data]));
-        a.download = 'targets.mind';
+        a.download = 'target.mind';
         a.click();
       });
     </script>

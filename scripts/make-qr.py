@@ -1,22 +1,25 @@
-"""Print-ready QR code for the poster (high error correction).
-Run: pip install qrcode pillow && python3 scripts/make-qr.py https://SITE.netlify.app
-Writes qr/qr.svg (vector, best for print) and qr/qr.png (2000 px)."""
-import sys, os
+"""Print-ready QR codes (high error correction), one per poster slug.
+Run: pip install qrcode pillow && python3 scripts/make-qr.py london choky ...
+With no slugs, makes one for every poster in src/posters.js.
+Writes qr/<slug>.svg (vector, best for print) and qr/<slug>.png (2000 px)."""
+import os, re, sys
 import qrcode
 import qrcode.image.svg
 
-url = sys.argv[1]
+src = open("src/posters.js").read()
+site = re.search(r"SITE_URL = '([^']+)'", src).group(1)
+slugs = sys.argv[1:] or re.findall(r"slug: '([^']+)'", src)
 os.makedirs("qr", exist_ok=True)
-make = lambda **kw: qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, border=4, **kw)
 
-q = make(box_size=10, image_factory=qrcode.image.svg.SvgPathFillImage)
-q.add_data(url); q.make(fit=True)
-q.make_image().save("qr/qr.svg")
+def make(url, **kw):
+    q = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, border=4, **kw)
+    q.add_data(url)
+    q.make(fit=True)
+    return q
 
-q = make(box_size=1)
-q.add_data(url); q.make(fit=True)
-n = q.modules_count + 8
-q = make(box_size=max(1, 2000 // n))
-q.add_data(url); q.make(fit=True)
-q.make_image(fill_color="black", back_color="white").save("qr/qr.png")
-print(f"{url} -> qr/qr.svg, qr/qr.png ({q.modules_count} modules)")
+for slug in slugs:
+    url = f"{site}/{slug}"
+    make(url, box_size=10, image_factory=qrcode.image.svg.SvgPathFillImage).make_image().save(f"qr/{slug}.svg")
+    n = make(url, box_size=1).modules_count + 8
+    make(url, box_size=max(1, 2000 // n)).make_image(fill_color="black", back_color="white").save(f"qr/{slug}.png")
+    print(f"{url} -> qr/{slug}.svg, qr/{slug}.png")
