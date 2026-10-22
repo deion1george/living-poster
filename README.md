@@ -41,6 +41,8 @@ Put the values you like into `src/config.js`.
 
 4. Paths and timings live in `src/config.js`.
 
+QR code: `pip install qrcode pillow && python3 scripts/make-qr.py https://bboy-london-boroughs.netlify.app` writes `qr/qr.svg` and `qr/qr.png` (high error correction).
+
 `scripts/make-placeholders.py` regenerates the placeholder poster and test clip.
 
 ## How it works
