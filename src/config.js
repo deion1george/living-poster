@@ -15,8 +15,8 @@ export const config = {
   },
 
   // Shown on the saved video's end card and in the share sheet.
-  website: 'BattleBurrows.com',
-  shareText: 'Battle of the Boroughs · BattleBurrows.com',
+  website: 'BattleBoroughs.com',
+  shareText: 'Battle of the Boroughs · https://battleboroughs.com',
 
   firstRevealMs: 1200, // poster -> video transition, first find only
   floatDelayMs: 500, // how long the poster must be gone before the video floats

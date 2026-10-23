@@ -38,7 +38,7 @@ Put the values you like into `src/config.js`.
    This writes `public/posters/choky/poster.jpg` and `video.mp4` (cropped to the poster's
    shape; `--center` is where the person sits across the frame, 0 = left, 1 = right), plus
    `download.mp4`: the full uncropped frame at higher quality with a branded end card
-   (event, name, BattleBurrows.com), which the Save video button hands to viewers.
+   (event, name, BattleBoroughs.com), which the Save video button hands to viewers.
 4. Compile the target: with `npm run dev` running, open
    http://localhost:5173/tools/compile.html, pick `public/posters/choky/poster.jpg`, and save
    the downloaded `target.mind` into `public/posters/choky/`.

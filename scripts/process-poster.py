@@ -15,7 +15,7 @@ ap.add_argument("video")
 ap.add_argument("--name", required=True, help="name shown on the end card")
 ap.add_argument("--center", type=float, default=0.5)
 ap.add_argument("--event", default="Battle of the Boroughs")
-ap.add_argument("--website", default="BattleBurrows.com")
+ap.add_argument("--website", default="BattleBoroughs.com")
 ap.add_argument("--card-seconds", type=float, default=3.5)
 a = ap.parse_args()
 
