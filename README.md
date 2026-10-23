@@ -32,23 +32,29 @@ Put the values you like into `src/config.js`.
 3. Prepare the web files from the final print JPG and the video:
 
    ```sh
-   python3 scripts/process-poster.py choky Choky-final.jpg Choky.mov --center 0.5
+   python3 scripts/process-poster.py choky Choky-final.jpg Choky.mov --name "B-Boy Choky" --center 0.5
    ```
 
    This writes `public/posters/choky/poster.jpg` and `video.mp4` (cropped to the poster's
-   shape; `--center` is where the person sits across the frame, 0 = left, 1 = right).
+   shape; `--center` is where the person sits across the frame, 0 = left, 1 = right), plus
+   `download.mp4`: the full uncropped frame at higher quality with a branded end card
+   (event, name, BattleBurrows.com), which the Save video button hands to viewers.
 4. Compile the target: with `npm run dev` running, open
    http://localhost:5173/tools/compile.html, pick `public/posters/choky/poster.jpg`, and save
    the downloaded `target.mind` into `public/posters/choky/`.
 
-Each poster folder holds `poster.jpg`, `video.mp4` and `target.mind`.
+Each poster folder holds `poster.jpg`, `video.mp4`, `download.mp4` and `target.mind`.
 
 ## How it works
 
 - `src/main.js` handles the start screen, the audio unlock (the video is played inside the
-  tap so iOS allows sound later), error screens, the scan hint, mute, and pause on target
-  lost / resume on target found. The first time the poster is found, the artwork lifts and
-  dissolves into the video.
+  tap so iOS allows sound later), error screens, the scan hint and mute. The first time the
+  poster is found, the artwork lifts and dissolves into the video. When the poster leaves the
+  frame, the video lifts off and keeps playing as a card in front of the camera (X closes it);
+  pointing back at the poster flies it back onto the print.
+- Save video downloads the poster's `download.mp4` on the first tap, then opens the phone's
+  share sheet on the second (iOS only allows the share sheet straight from a tap), where
+  "Save Video" puts it in Photos. Browsers without file sharing get a normal download.
 - `src/config.js` picks the poster from the URL path; `src/posters.js` lists them.
 - `src/ar.js` drives MindAR's `Controller` directly with modern three.js. MindAR's bundled
   three.js helper uses `sRGBEncoding`, which three.js removed in r162.

@@ -1,4 +1,6 @@
-import { Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace, TextureLoader, VideoTexture } from 'three';
+import {
+  Group, Mesh, MeshBasicMaterial, PlaneGeometry, Quaternion, SRGBColorSpace, TextureLoader, Vector3, VideoTexture,
+} from 'three';
 import { config, currentPoster } from './config.js';
 import { ImageTracker } from './ar.js';
 
@@ -152,13 +154,24 @@ async function unlockAudio() {
     setMuted(true);
     await video.play().catch(() => {});
   }
-  if (!targetVisible) video.pause();
+  if (!shouldPlay()) video.pause();
 }
 
 // ---------- Scene ----------
+// The video lives in `holder`, which is posed every frame from one of three modes:
+//   'tracked'  locked to the poster
+//   'floating' a card in front of the camera, after the poster leaves the frame
+//   'closed'   hidden after the viewer taps X, until the poster is found again
+// Switching modes blends from the pose on screen to the new one, so the video
+// lifts off the print and flies back onto it instead of jumping.
 let targetVisible = false;
 let revealed = false;
-let fade = null; // { from, to, start, ms }
+let mode = 'idle';
+let fade = null; // poster -> video reveal / re-find fade: { from, to, start, ms, reveal }
+let blend = null; // pose transition: { from: {p,q,s}, start, ms }
+let floatTimer = null;
+
+const shouldPlay = () => mode === 'tracked' || mode === 'floating';
 
 function buildContent(tracker) {
   const [w, h] = tracker.targetDimensions[0];
@@ -178,10 +191,56 @@ function buildContent(tracker) {
   posterPlane.position.z = 0.001;
 
   const anchor = tracker.addAnchor(0);
-  anchor.group.add(videoPlane, posterPlane);
+  const holder = new Group();
+  holder.visible = false;
+  holder.matrixAutoUpdate = false; // posed by hand every frame
+  holder.add(videoPlane, posterPlane);
+  tracker.scene.add(holder);
+
+  const tmp = { p: new Vector3(), q: new Quaternion(), s: new Vector3() };
+  const target = { p: new Vector3(), q: new Quaternion(), s: new Vector3() };
+
+  // Card pose in camera space: centred, filling most of the screen. The three.js
+  // camera sits at the origin looking down -z, so this is just a point in front of it.
+  function floatPose(out) {
+    const cam = tracker.camera;
+    const d = 1000;
+    const viewH = 2 * d * Math.tan((cam.fov * Math.PI) / 360);
+    const viewW = viewH * cam.aspect;
+    const scale = Math.min((viewW * 0.84) / 1, (viewH * 0.7) / aspect);
+    out.p.set(0, viewH * 0.03, -d);
+    out.q.identity();
+    out.s.setScalar(scale);
+  }
+
+  function setMode(next) {
+    if (next === mode) return;
+    holder.matrix.decompose(tmp.p, tmp.q, tmp.s);
+    blend = holder.visible ? { from: { p: tmp.p.clone(), q: tmp.q.clone(), s: tmp.s.clone() }, start: performance.now(), ms: next === 'tracked' ? 400 : 550 } : null;
+    mode = next;
+    $('btn-close').hidden = mode !== 'floating';
+    $('scan-hint').classList.toggle('off', shouldPlay());
+    if (shouldPlay()) video.play().catch(() => {});
+    else video.pause();
+  }
 
   const ease = (t) => t * t * (3 - 2 * t);
   tracker.onBeforeRender = (now) => {
+    // Pose
+    if (mode === 'tracked') anchor.group.matrix.decompose(target.p, target.q, target.s);
+    else floatPose(target);
+    if (blend) {
+      const k = ease(Math.min(1, (now - blend.start) / blend.ms));
+      target.p.lerpVectors(blend.from.p, target.p, k);
+      target.q.slerpQuaternions(blend.from.q, target.q, k);
+      target.s.lerpVectors(blend.from.s, target.s, k);
+      if (k >= 1) blend = null;
+    }
+    holder.matrix.compose(target.p, target.q, target.s);
+    holder.matrixWorldNeedsUpdate = true;
+    holder.visible = shouldPlay() || (mode === 'closed' && fade !== null);
+
+    // Opacity
     if (!fade) return;
     const t = Math.min(1, (now - fade.start) / fade.ms);
     const k = ease(t);
@@ -200,31 +259,91 @@ function buildContent(tracker) {
 
   anchor.onTargetFound = () => {
     targetVisible = true;
-    $('scan-hint').classList.add('off');
-    video.play().catch(() => {});
+    clearTimeout(floatTimer);
+    const wasShowing = mode === 'floating' || mode === 'tracked';
+    setMode('tracked');
     const now = performance.now();
     if (!revealed) {
       revealed = true;
       fade = { from: 0, to: 1, start: now, ms: config.firstRevealMs, reveal: true };
-    } else {
+      $('btn-save').hidden = false;
+    } else if (!wasShowing) {
       fade = { from: 0, to: 1, start: now, ms: config.refindFadeMs };
     }
   };
   anchor.onTargetLost = () => {
     targetVisible = false;
-    $('scan-hint').classList.remove('off');
-    video.pause();
-    if (!fade?.reveal) {
-      fade = null;
-      videoMat.opacity = 0;
-    }
+    // Wait a moment so a brief tracking wobble doesn't send the video flying.
+    clearTimeout(floatTimer);
+    floatTimer = setTimeout(() => {
+      if (!targetVisible) setMode('floating');
+    }, config.floatDelayMs);
   };
+
+  $('btn-close').addEventListener('click', () => {
+    if (fade?.reveal) posterPlane.visible = false;
+    setMode('closed');
+    fade = { from: videoMat.opacity, to: 0, start: performance.now(), ms: 250 };
+  });
+
+  mode = 'scanning';
 }
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) video.pause();
-  else if (targetVisible) video.play().catch(() => {});
+  else if (shouldPlay()) video.play().catch(() => {});
 });
+
+// ---------- Save video ----------
+// iOS only lets the share sheet open straight from a tap, and the HD file is too
+// big to fetch inside one. So the first tap downloads it ("Preparing…") and the
+// second tap opens the share sheet, where "Save Video" puts it in Photos.
+let saveFile = null;
+async function onSave() {
+  const btn = $('btn-save');
+  const label = $('save-label');
+  if (saveFile) {
+    try {
+      if (navigator.canShare?.({ files: [saveFile] })) {
+        await navigator.share({ files: [saveFile], title: `${poster.name} · ${config.event}`, text: config.shareText });
+        return;
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return; // viewer closed the share sheet
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(saveFile);
+    a.download = saveFile.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const res = await fetch(poster.downloadSrc);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const total = +res.headers.get('content-length') || 0;
+    const reader = res.body.getReader();
+    const chunks = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      got += value.length;
+      label.textContent = total ? `Preparing… ${Math.round((got / total) * 100)}%` : 'Preparing…';
+    }
+    saveFile = new File(chunks, `${poster.slug}-battle-of-the-boroughs.mp4`, { type: 'video/mp4' });
+    label.textContent = 'Tap to save';
+    btn.classList.add('ready');
+  } catch (err) {
+    console.error(err);
+    label.textContent = 'Try again';
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('btn-save').addEventListener('click', onSave);
 
 // ---------- Start ----------
 async function start() {
