@@ -10,3 +10,7 @@
 
 /posters/*/target.mind
   Content-Type: application/octet-stream
+
+/stats
+  X-Robots-Tag: noindex
+  Cache-Control: no-store

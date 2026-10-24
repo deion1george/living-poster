@@ -14,7 +14,14 @@ export const config = {
     warmupTolerance: 3,
   },
 
+  // Shown on the saved video's end card and in the share sheet.
+  website: 'BattleBoroughs.com',
+  shareText: 'Battle of the Boroughs · https://battleboroughs.com',
+  // Tappable badge shown over the video. Swap in a sponsor later.
+  badge: { label: 'BattleBoroughs.com', url: 'https://battleboroughs.com/' },
+
   firstRevealMs: 1200, // poster -> video transition, first find only
+  floatDelayMs: 500, // how long the poster must be gone before the video floats
   refindFadeMs: 250,
 };
 
@@ -32,5 +39,7 @@ export function currentPoster() {
     // H.264/AAC MP4, faststart, cropped to the poster's aspect ratio.
     videoSrc: `${dir}/video.mp4`,
     targetSrc: `${dir}/target.mind`,
+    // Sharper copy with an end card, fetched only when the viewer taps Save.
+    downloadSrc: `${dir}/download.mp4`,
   };
 }

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111114" />
+    <meta name="robots" content="noindex" />
+    <title>Poster Scans · Battle of the Boroughs</title>
+    <link rel="stylesheet" href="/src/stats.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">Battle of the Boroughs</p>
+          <h1>Poster scans</h1>
+        </div>
+        <div class="controls" id="controls" hidden>
+          <div class="seg" role="group" aria-label="Data">
+            <button id="mode-live" aria-pressed="true">Live</button>
+            <button id="mode-test" aria-pressed="false">Test</button>
+          </div>
+          <button id="refresh" class="ghost">Refresh</button>
+        </div>
+      </header>
+
+      <form id="login" class="panel login" hidden>
+        <label for="password">Dashboard password</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+        <button class="btn">Open dashboard</button>
+        <p id="login-error" class="error" hidden></p>
+      </form>
+
+      <p id="message" class="panel message" hidden></p>
+
+      <section id="dash" hidden>
+        <p class="updated" id="updated"></p>
+        <div class="tiles">
+          <div class="tile hero"><span class="label">Poster scans</span><span class="num" id="t-scan">0</span></div>
+          <div class="tile"><span class="label">People</span><span class="num" id="t-people">0</span></div>
+          <div class="tile"><span class="label">Tapped start</span><span class="num" id="t-start">0</span></div>
+          <div class="tile"><span class="label">Poster found</span><span class="num" id="t-found">0</span></div>
+          <div class="tile"><span class="label">Videos saved</span><span class="num" id="t-save">0</span></div>
+          <div class="tile"><span class="label">Website taps</span><span class="num" id="t-link">0</span></div>
+        </div>
+
+        <section class="panel">
+          <h2>Scans by poster</h2>
+          <p class="sub">Most scanned first. People counts each phone once.</p>
+          <table class="rank">
+            <thead><tr><th>#</th><th>Poster</th><th class="bar-col"></th><th>Scans</th><th>People</th><th>Saved</th><th>Site taps</th></tr></thead>
+            <tbody id="rank"></tbody>
+          </table>
+        </section>
+
+        <div class="two">
+          <section class="panel">
+            <h2>Scans per day</h2>
+            <div id="days" class="days"></div>
+          </section>
+          <section class="panel">
+            <h2>Phones</h2>
+            <p class="sub">People, by phone type</p>
+            <div id="devices" class="hbars"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <div id="tip" class="tip" hidden></div>
+    <script type="module" src="/src/stats.js"></script>
+  </body>
+</html>
