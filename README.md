@@ -72,3 +72,18 @@ every poster path to the app, and `public/_headers` sets caching and camera perm
 - The tracked image must be the exact final print artwork, QR code included.
 - Fine detail and contrast across the whole art; avoid big blank areas and repeating patterns.
 - Print from the full-resolution file. Matte paper tracks better than gloss.
+
+## Scan dashboard
+
+`/stats` shows poster scans, people (each phone counted once), taps on Start,
+posters found, videos saved, a ranking of every poster, scans per day and phone
+types. The phone page reports each step to `netlify/functions/hit.mjs`, which
+stores one Netlify Blob per step (no names or IPs). `netlify/functions/stats.mjs`
+adds them up. Deploy previews write to a separate "Test" store, so testing
+doesn't change the live numbers.
+
+Setup, once: in Netlify, Site configuration → Environment variables, add
+`STATS_PASSWORD` (any password you like), then redeploy.
+
+Posters marked `ready: false` in `src/posters.js` show a "Coming soon" page;
+their scans are still counted.

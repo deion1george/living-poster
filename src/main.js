@@ -3,6 +3,7 @@ import {
 } from 'three';
 import { config, currentPoster } from './config.js';
 import { ImageTracker } from './ar.js';
+import { track } from './track.js';
 
 const $ = (id) => document.getElementById(id);
 const poster = currentPoster();
@@ -45,6 +46,10 @@ const ERRORS = {
     title: 'Update needed',
     body: "This browser can't run the AR experience. Update your phone (Settings → General → Software Update), or try Chrome.",
     action: 'Copy link',
+  },
+  comingSoon: {
+    title: 'Coming soon',
+    body: 'This poster comes to life soon. Check back closer to Battle of the Boroughs.',
   },
   notFound: {
     title: 'Scan a poster',
@@ -262,6 +267,7 @@ function buildContent(tracker) {
     clearTimeout(floatTimer);
     const wasShowing = mode === 'floating' || mode === 'tracked';
     setMode('tracked');
+    track('found', poster.slug);
     const now = performance.now();
     if (!revealed) {
       revealed = true;
@@ -306,6 +312,7 @@ async function onSave() {
     try {
       if (navigator.canShare?.({ files: [saveFile] })) {
         await navigator.share({ files: [saveFile], title: `${poster.name} · ${config.event}`, text: config.shareText });
+        track('save', poster.slug);
         return;
       }
     } catch (err) {
@@ -315,6 +322,7 @@ async function onSave() {
     a.href = URL.createObjectURL(saveFile);
     a.download = saveFile.name;
     a.click();
+    track('save', poster.slug);
     setTimeout(() => URL.revokeObjectURL(a.href), 60000);
     return;
   }
@@ -347,6 +355,7 @@ $('btn-save').addEventListener('click', onSave);
 
 // ---------- Start ----------
 async function start() {
+  track('start', poster.slug);
   // 1) Gesture-bound work first: audio unlock and the camera prompt.
   const audio = unlockAudio();
   const tracker = new ImageTracker({
@@ -380,7 +389,8 @@ async function start() {
 }
 
 window.__appReady = true;
-const blocker = poster ? preflight() : 'notFound';
+const blocker = !poster ? 'notFound' : !poster.ready ? 'comingSoon' : preflight();
+if (poster) track('scan', poster.slug);
 if (poster) {
   $('poster-name').textContent = poster.name;
   document.title = `${poster.name} · ${config.event}`;
