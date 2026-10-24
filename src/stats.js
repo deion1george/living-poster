@@ -50,11 +50,11 @@ function render({ totals, posters: byPoster, days, devices }) {
   $('login').hidden = $('message').hidden = true;
   $('dash').hidden = $('controls').hidden = false;
   $('updated').textContent = `${test ? 'Test data from preview links' : 'Live'} · updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
-  for (const k of ['scan', 'people', 'start', 'found', 'save']) $(`t-${k}`).textContent = fmt(totals[k]);
+  for (const k of ['scan', 'people', 'start', 'found', 'save', 'link']) $(`t-${k}`).textContent = fmt(totals[k]);
 
   // Every poster, including ones nobody has scanned yet.
   const rows = [...new Set([...posters.map((p) => p.slug), ...Object.keys(byPoster)])]
-    .map((slug) => ({ slug, name: nameOf[slug] || slug, ...{ scan: 0, people: 0, save: 0 }, ...byPoster[slug] }))
+    .map((slug) => ({ slug, name: nameOf[slug] || slug, ...{ scan: 0, people: 0, save: 0, link: 0 }, ...byPoster[slug] }))
     .sort((a, b) => b.scan - a.scan || a.name.localeCompare(b.name));
   const max = Math.max(1, ...rows.map((r) => r.scan));
   $('rank').innerHTML = rows
@@ -62,7 +62,7 @@ function render({ totals, posters: byPoster, days, devices }) {
       (r, i) => `<tr class="${r.scan ? '' : 'zero'}">
         <td>${r.scan ? i + 1 : ''}</td><td>${esc(r.name)}</td>
         <td class="bar-cell"><div class="bar" data-tip="${esc(r.name)}: ${fmt(r.scan)} scans"><span style="width:${(r.scan / max) * 100}%"></span></div></td>
-        <td>${fmt(r.scan)}</td><td>${fmt(r.people)}</td><td>${fmt(r.save)}</td></tr>`,
+        <td>${fmt(r.scan)}</td><td>${fmt(r.people)}</td><td>${fmt(r.save)}</td><td>${fmt(r.link)}</td></tr>`,
     )
     .join('');
 

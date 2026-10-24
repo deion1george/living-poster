@@ -273,6 +273,7 @@ function buildContent(tracker) {
       revealed = true;
       fade = { from: 0, to: 1, start: now, ms: config.firstRevealMs, reveal: true };
       $('btn-save').hidden = false;
+      $('site-badge').hidden = false;
     } else if (!wasShowing) {
       fade = { from: 0, to: 1, start: now, ms: config.refindFadeMs };
     }
@@ -352,6 +353,12 @@ async function onSave() {
   }
 }
 $('btn-save').addEventListener('click', onSave);
+
+// ---------- Website badge ----------
+// Opens in a new tab so the AR view is still there when the viewer comes back.
+$('site-badge').href = config.badge.url;
+$('site-badge-label').textContent = config.badge.label;
+$('site-badge').addEventListener('click', () => track('link', poster.slug));
 
 // ---------- Start ----------
 async function start() {

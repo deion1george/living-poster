@@ -17,6 +17,8 @@ export const config = {
   // Shown on the saved video's end card and in the share sheet.
   website: 'BattleBoroughs.com',
   shareText: 'Battle of the Boroughs · https://battleboroughs.com',
+  // Tappable badge shown over the video. Swap in a sponsor later.
+  badge: { label: 'BattleBoroughs.com', url: 'https://battleboroughs.com/' },
 
   firstRevealMs: 1200, // poster -> video transition, first find only
   floatDelayMs: 500, // how long the poster must be gone before the video floats

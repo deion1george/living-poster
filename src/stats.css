@@ -36,7 +36,7 @@ button { font: inherit; cursor: pointer; }
 .message { margin: 0; color: var(--muted); line-height: 1.5; }
 .updated { margin: 0; color: var(--faint); font-size: 13px; }
 
-.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
 .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
 .tile.hero { grid-column: 1 / -1; }
 .tile .label { color: var(--muted); font-size: 13px; }
@@ -69,6 +69,7 @@ button { font: inherit; cursor: pointer; }
 
 @media (max-width: 640px) {
   .tiles { grid-template-columns: repeat(2, 1fr); }
+  .tile:last-child { grid-column: 1 / -1; }
   .two { grid-template-columns: 1fr; }
   .bar-col, .rank td.bar-cell { display: none; }
   h1 { font-size: 26px; }

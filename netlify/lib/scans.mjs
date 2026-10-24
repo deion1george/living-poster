@@ -9,4 +9,4 @@ export function scansStore(context, test) {
 }
 
 export const TIME_ZONE = 'America/New_York';
-export const EVENTS = ['scan', 'start', 'found', 'save'];
+export const EVENTS = ['scan', 'start', 'found', 'save', 'link'];

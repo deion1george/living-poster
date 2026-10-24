@@ -1,7 +1,7 @@
 // Anonymous scan counts for the dashboard (/stats). Sends the poster slug, the
 // step reached and a random per-browser id (so a person scanning twice counts
 // once in "people"). No names, IPs or camera data.
-const EVENTS = ['scan', 'start', 'found', 'save'];
+const EVENTS = ['scan', 'start', 'found', 'save', 'link'];
 
 function visitorId() {
   try {
