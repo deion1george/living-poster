@@ -68,7 +68,7 @@ function render({ totals, posters: byPoster, days, devices }) {
 
   renderDays(days);
 
-  const dev = [['iPhone', devices.iphone], ['Android', devices.android], ['Other', devices.other]];
+  const dev = [['iPhone / iPad', devices.iphone], ['Android', devices.android], ['Other', devices.other]];
   const dmax = Math.max(1, ...dev.map((d) => d[1]));
   $('devices').innerHTML = dev
     .map(([label, n]) => `<div class="row"><span>${label}</span><div class="bar" data-tip="${label}: ${fmt(n)} people"><span style="width:${(n / dmax) * 100}%"></span></div><b>${fmt(n)}</b></div>`)

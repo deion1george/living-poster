@@ -14,7 +14,7 @@ export default async (req, context) => {
   if (!ok) return new Response(null, { status: 400 });
 
   const ua = req.headers.get('user-agent') || '';
-  const device = /iPhone|iPad|iPod/.test(ua) ? 'iphone' : /Android/.test(ua) ? 'android' : 'other';
+  const device = d.ipad === true || /iPhone|iPad|iPod/.test(ua) ? 'iphone' : /Android/.test(ua) ? 'android' : 'other';
   const day = new Date().toLocaleDateString('en-CA', { timeZone: TIME_ZONE }); // YYYY-MM-DD
   const key = `${day}/${d.slug}/${d.event}/${device}/${d.v}/${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
   await scansStore(context).set(key, '1');
