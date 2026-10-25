@@ -20,10 +20,11 @@ function visitorId() {
 const ipad = /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
 
 const sent = new Set();
-// Each step is counted at most once per page load.
+// Each step is counted at most once per poster per page load.
 export function track(event, slug) {
-  if (!EVENTS.includes(event) || sent.has(event) || import.meta.env.DEV) return;
-  sent.add(event);
+  const key = `${slug}:${event}`;
+  if (!EVENTS.includes(event) || sent.has(key) || import.meta.env.DEV) return;
+  sent.add(key);
   const body = JSON.stringify({ slug, event, v: visitorId(), ...(ipad && { ipad: true }) });
   try {
     if (navigator.sendBeacon?.('/.netlify/functions/hit', body)) return;

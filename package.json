@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@netlify/blobs": "11.1.6",
+    "jsqr": "1.4.0",
     "mind-ar": "1.2.5",
     "three": "0.186.1"
   },

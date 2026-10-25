@@ -60,19 +60,46 @@ export class ImageTracker {
   }
 
   async startTracking() {
+    await this._loadTarget(this.targetSrc);
+    this.renderer.setAnimationLoop((t) => {
+      this.onBeforeRender?.(t);
+      this.renderer.render(this.scene, this.camera);
+    });
+  }
+
+  // Swap to another poster's target without touching the camera or the scene.
+  async setTarget(targetSrc) {
+    const old = this.controller;
+    this.controller = null; // drops any late updates from the old one
+    old.stopProcessVideo();
+    for (const anchor of this.anchors) {
+      anchor.visible = false;
+      anchor.group.visible = false;
+    }
+    // Its loop may still be mid-frame, so free its GPU data a little later.
+    setTimeout(() => {
+      old.dispose();
+      old.worker.terminate?.();
+      const t = old.tracker;
+      if (t) [...t.featurePointsListT, ...t.imagePixelsListT, ...t.imagePropertiesListT].forEach((x) => x.dispose());
+    }, 1000);
+    this.targetSrc = targetSrc;
+    await this._loadTarget(targetSrc);
+  }
+
+  async _loadTarget(targetSrc) {
     const { video } = this;
-    this.controller = new Controller({
+    const controller = new Controller({
       inputWidth: video.videoWidth,
       inputHeight: video.videoHeight,
       maxTrack: 1,
       ...this.tracking,
       onUpdate: (data) => {
-        if (data.type === 'updateMatrix') this._onMatrix(data.targetIndex, data.worldMatrix);
+        if (data.type === 'updateMatrix' && controller === this.controller) this._onMatrix(data.targetIndex, data.worldMatrix);
       },
     });
-    this.resize();
 
-    const { dimensions } = await this.controller.addImageTargets(this.targetSrc);
+    const { dimensions } = await controller.addImageTargets(targetSrc);
     // Map MindAR's pixel space to "target width = 1 unit, centred".
     this.postMatrices = dimensions.map(([w, h]) => {
       const m = new Matrix4();
@@ -81,12 +108,10 @@ export class ImageTracker {
     });
     this.targetDimensions = dimensions;
 
-    await this.controller.dummyRun(video);
-    this.controller.processVideo(video);
-    this.renderer.setAnimationLoop((t) => {
-      this.onBeforeRender?.(t);
-      this.renderer.render(this.scene, this.camera);
-    });
+    await controller.dummyRun(video);
+    this.controller = controller;
+    this.resize();
+    controller.processVideo(video);
   }
 
   _onMatrix(targetIndex, worldMatrix) {
