@@ -27,7 +27,7 @@ export const posters = [
   { slug: 'spy', name: 'B-Boy Spy', ready: false },
   { slug: 'spiderweb', name: 'B-Boy Spiderweb', ready: false },
   { slug: 'trac2', name: 'B-Boy Trac2', ready: false },
-  { slug: 'jayson-reyes', name: 'Jayson Reyes', ready: false },
+  { slug: 'jayson-reyes', name: 'Jason Reyes', ready: false },
   { slug: 'kid-nice', name: 'B-Boy Kid Nice', ready: false },
   { slug: 'ron-lo', name: 'B-Boy Ron Lo', ready: false },
   { slug: 'speedy-dee', name: 'B-Boy Speedy Dee', ready: false },

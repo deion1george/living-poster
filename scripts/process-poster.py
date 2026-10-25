@@ -17,7 +17,11 @@ ap.add_argument("--center", type=float, default=0.5)
 ap.add_argument("--event", default="Battle of the Boroughs")
 ap.add_argument("--website", default="BattleBoroughs.com")
 ap.add_argument("--card-seconds", type=float, default=3.5)
+ap.add_argument("--start", type=float, default=0, help="trim: seconds to skip at the start")
+ap.add_argument("--end", type=float, help="trim: stop at this time (seconds into the source)")
 a = ap.parse_args()
+
+trim = ["-ss", str(a.start)] + (["-to", str(a.end)] if a.end else [])
 
 out = f"public/posters/{a.slug}"
 os.makedirs(out, exist_ok=True)
@@ -45,7 +49,7 @@ x = min(max(0, round(a.center * w - cw / 2)), w - cw)
 y = 0
 scale = f",scale=-2:'min(1080,ih)'"
 subprocess.run([
-    "ffmpeg", "-y", "-loglevel", "error", "-i", a.video,
+    "ffmpeg", "-y", "-loglevel", "error", *trim, "-i", a.video,
     "-map", "0:v:0", "-map", "0:a:0?",
     "-vf", f"crop={cw}:{ch}:{x}:{y}{scale},format=yuv420p",
     "-c:v", "libx264", "-profile:v", "main", "-preset", "slow", "-crf", "25",
@@ -106,7 +110,7 @@ fc = (f"[0:v]scale={ow}:{oh},setsar=1,fps=30,format=yuv420p[v0];"
       + f"anullsrc=r=48000:cl=stereo,atrim=0:{cs}[a1];"
       "[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]")
 subprocess.run([
-    "ffmpeg", "-y", "-loglevel", "error", "-i", a.video,
+    "ffmpeg", "-y", "-loglevel", "error", *trim, "-i", a.video,
     "-loop", "1", "-t", str(cs), "-i", card_path,
     "-filter_complex", fc, "-map", "[v]", "-map", "[a]",
     "-c:v", "libx264", "-profile:v", "high", "-preset", "slow", "-crf", "20",
