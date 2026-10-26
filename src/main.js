@@ -1,12 +1,13 @@
 import {
   Group, Mesh, MeshBasicMaterial, PlaneGeometry, Quaternion, SRGBColorSpace, TextureLoader, Vector3, VideoTexture,
 } from 'three';
-import { config, currentPoster } from './config.js';
+import { config, currentPoster, posterFor } from './config.js';
 import { ImageTracker } from './ar.js';
 import { track } from './track.js';
+import { watchQr } from './qr.js';
 
 const $ = (id) => document.getElementById(id);
-const poster = currentPoster();
+let poster = currentPoster();
 const screens = ['screen-start', 'screen-loading', 'screen-error'];
 const show = (id) => screens.forEach((s) => ($(s).hidden = s !== id));
 
@@ -162,6 +163,16 @@ async function unlockAudio() {
   if (!shouldPlay()) video.pause();
 }
 
+// If the browser won't play with sound (it can happen after switching posters),
+// play muted rather than not at all; the mute button can turn sound back on.
+function playVideo() {
+  video.play().catch((err) => {
+    if (err.name !== 'NotAllowedError' || video.muted) return;
+    setMuted(true);
+    video.play().catch(() => {});
+  });
+}
+
 // ---------- Scene ----------
 // The video lives in `holder`, which is posed every frame from one of three modes:
 //   'tracked'  locked to the poster
@@ -182,14 +193,14 @@ function buildContent(tracker) {
   const [w, h] = tracker.targetDimensions[0];
   const aspect = h / w;
   document.querySelector('#scan-hint .frame').style.aspectRatio = `${w} / ${h}`;
-  const geo = new PlaneGeometry(1, aspect);
+  let geo = new PlaneGeometry(1, aspect);
 
   const videoTex = new VideoTexture(video);
   videoTex.colorSpace = SRGBColorSpace;
   const videoMat = new MeshBasicMaterial({ map: videoTex, transparent: true, opacity: 0 });
   const videoPlane = new Mesh(geo, videoMat);
 
-  const posterTex = new TextureLoader().load(poster.posterSrc);
+  let posterTex = new TextureLoader().load(poster.posterSrc);
   posterTex.colorSpace = SRGBColorSpace;
   const posterMat = new MeshBasicMaterial({ map: posterTex, transparent: true, opacity: 1, depthWrite: false });
   const posterPlane = new Mesh(geo, posterMat);
@@ -212,7 +223,7 @@ function buildContent(tracker) {
     const d = 1000;
     const viewH = 2 * d * Math.tan((cam.fov * Math.PI) / 360);
     const viewW = viewH * cam.aspect;
-    const scale = Math.min((viewW * 0.84) / 1, (viewH * 0.7) / aspect);
+    const scale = Math.min((viewW * 0.84) / 1, (viewH * 0.7) / geo.parameters.height);
     out.p.set(0, viewH * 0.03, -d);
     out.q.identity();
     out.s.setScalar(scale);
@@ -225,7 +236,9 @@ function buildContent(tracker) {
     mode = next;
     $('btn-close').hidden = mode !== 'floating';
     $('scan-hint').classList.toggle('off', shouldPlay());
-    if (shouldPlay()) video.play().catch(() => {});
+    $('switch-tip').hidden = !shouldPlay();
+    $('switch-tip').classList.toggle('low', mode === 'floating');
+    if (shouldPlay()) playVideo();
     else video.pause();
   }
 
@@ -294,11 +307,43 @@ function buildContent(tracker) {
   });
 
   mode = 'scanning';
+
+  // Back to "point at the poster" with another poster's art and video loaded.
+  return {
+    reset() {
+      clearTimeout(floatTimer);
+      targetVisible = false;
+      revealed = false;
+      fade = null;
+      blend = null;
+      setMode('scanning');
+      holder.visible = false;
+      videoMat.opacity = 0;
+      posterMat.opacity = 1;
+      posterPlane.visible = true;
+      posterPlane.scale.setScalar(1);
+      posterPlane.position.z = 0.001;
+      posterTex.dispose();
+      posterTex = new TextureLoader().load(poster.posterSrc);
+      posterTex.colorSpace = SRGBColorSpace;
+      posterMat.map = posterTex;
+      posterMat.needsUpdate = true;
+    },
+    // Call once the new target has loaded.
+    fitTarget() {
+      const [w, h] = tracker.targetDimensions[0];
+      document.querySelector('#scan-hint .frame').style.aspectRatio = `${w} / ${h}`;
+      if (Math.abs(h / w - geo.parameters.height) < 1e-4) return;
+      geo.dispose();
+      geo = new PlaneGeometry(1, h / w);
+      videoPlane.geometry = posterPlane.geometry = geo;
+    },
+  };
 }
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) video.pause();
-  else if (shouldPlay()) video.play().catch(() => {});
+  else if (shouldPlay()) playVideo();
 });
 
 // ---------- Save video ----------
@@ -306,6 +351,13 @@ document.addEventListener('visibilitychange', () => {
 // big to fetch inside one. So the first tap downloads it ("Preparing…") and the
 // second tap opens the share sheet, where "Save Video" puts it in Photos.
 let saveFile = null;
+let saving = null; // the poster a download in progress is for
+function resetSave() {
+  saveFile = null;
+  $('save-label').textContent = 'Save video';
+  $('btn-save').classList.remove('ready');
+  $('btn-save').disabled = false;
+}
 async function onSave() {
   const btn = $('btn-save');
   const label = $('save-label');
@@ -328,6 +380,7 @@ async function onSave() {
     return;
   }
   btn.disabled = true;
+  const forPoster = (saving = poster);
   try {
     const res = await fetch(poster.downloadSrc);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -338,6 +391,7 @@ async function onSave() {
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
+      if (saving !== forPoster) return; // switched posters mid-download
       chunks.push(value);
       got += value.length;
       label.textContent = total ? `Preparing… ${Math.round((got / total) * 100)}%` : 'Preparing…';
@@ -347,9 +401,9 @@ async function onSave() {
     btn.classList.add('ready');
   } catch (err) {
     console.error(err);
-    label.textContent = 'Try again';
+    if (saving === forPoster) label.textContent = 'Try again';
   } finally {
-    btn.disabled = false;
+    if (saving === forPoster) btn.disabled = false;
   }
 }
 $('btn-save').addEventListener('click', onSave);
@@ -360,12 +414,66 @@ $('site-badge').href = config.badge.url;
 $('site-badge-label').textContent = config.badge.label;
 $('site-badge').addEventListener('click', () => track('link', poster.slug));
 
+// ---------- Switching posters ----------
+// The camera keeps reading QR codes. Seeing another poster's code switches the
+// page to that poster in place: same camera, same (already unlocked) video element.
+let content = null;
+let tracker = null;
+let switching = false;
+let lastQr = { slug: null, at: 0 };
+
+async function switchPoster(slug) {
+  if (switching || slug === poster.slug) return;
+  const next = posterFor(slug);
+  if (!next) return;
+  track('scan', slug);
+  if (!next.ready) {
+    // Don't drop what's playing for a poster with no video yet.
+    const now = Date.now();
+    if (lastQr.slug !== slug || now - lastQr.at > 8000) toast(`${next.name} is coming soon`);
+    lastQr = { slug, at: now };
+    return;
+  }
+  switching = true;
+  poster = next;
+  history.replaceState(null, '', `/${slug}${location.search}`);
+  document.title = `${poster.name} · ${config.event}`;
+  $('poster-name').textContent = poster.name;
+  resetSave();
+  $('btn-save').hidden = true;
+  $('site-badge').hidden = true;
+  content.reset();
+  video.pause();
+  video.src = poster.videoSrc;
+  video.load();
+  $('scan-hint-text').textContent = `Loading ${poster.name}…`;
+  try {
+    await tracker.setTarget(poster.targetSrc);
+    content.fitTarget();
+    track('start', slug);
+  } catch (err) {
+    showError('generic', err);
+    return;
+  } finally {
+    $('scan-hint-text').textContent = 'Point your camera at the poster';
+    switching = false;
+  }
+}
+
+let toastTimer = null;
+function toast(text) {
+  $('toast').textContent = text;
+  $('toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => ($('toast').hidden = true), 2500);
+}
+
 // ---------- Start ----------
 async function start() {
   track('start', poster.slug);
   // 1) Gesture-bound work first: audio unlock and the camera prompt.
   const audio = unlockAudio();
-  const tracker = new ImageTracker({
+  tracker = new ImageTracker({
     container: $('ar'),
     targetSrc: poster.targetSrc,
     tracking: trackingSettings(),
@@ -388,8 +496,9 @@ async function start() {
     showError('generic', err);
     return;
   }
-  buildContent(tracker);
-  if (import.meta.env.DEV) Object.assign(window, { __tracker: tracker, __video: video });
+  content = buildContent(tracker);
+  watchQr(tracker.video, (slug) => switchPoster(slug).catch((err) => showError('generic', err)));
+  if (import.meta.env.DEV) Object.assign(window, { __tracker: tracker, __video: video, __switchPoster: switchPoster });
 
   show(null);
   $('hud').hidden = false;

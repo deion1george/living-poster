@@ -27,7 +27,10 @@ export const config = {
 
 // The poster for the current URL path, with its asset paths, or null.
 export function currentPoster() {
-  const slug = location.pathname.split('/').filter(Boolean)[0]?.toLowerCase();
+  return posterFor(location.pathname.split('/').filter(Boolean)[0]?.toLowerCase());
+}
+
+export function posterFor(slug) {
   const p = posters.find((x) => x.slug === slug);
   if (!p) return null;
   const dir = `/posters/${p.slug}`;

@@ -60,6 +60,15 @@ p { margin: 0; color: var(--muted); line-height: 1.45; }
 #scan-hint p { color: #fff; font-weight: 600; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7); position: relative; }
 @keyframes pulse { 50% { transform: scale(1.04); opacity: 0.7; } }
 
+/* Small notes at the top. The tip drops below the close button while the video floats. */
+.hud-note {
+  position: absolute; left: 50%; transform: translateX(-50%); top: max(16px, env(safe-area-inset-top));
+  max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 999px; background: rgba(17, 17, 20, 0.7);
+  color: #fff; font-size: 13px; font-weight: 600; text-align: center; white-space: nowrap;
+}
+#switch-tip.low { top: calc(max(16px, env(safe-area-inset-top)) + 62px); }
+.toast { top: 40%; font-size: 15px; padding: 12px 18px; }
+
 .icon-btn {
   position: absolute; right: 16px; bottom: max(20px, env(safe-area-inset-bottom));
   width: 52px; height: 52px; border-radius: 50%; border: 0; padding: 13px;
