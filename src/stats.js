@@ -10,10 +10,14 @@ try {
 } catch {}
 
 async function load() {
-  $('refresh').disabled = true;
+  const btn = $('refresh');
+  btn.disabled = true;
+  btn.textContent = 'Refreshing…';
+  let done = 'Refresh';
   try {
     const res = await fetch(`/.netlify/functions/stats${test ? '?test=1' : ''}`, {
       headers: { 'x-stats-password': password },
+      cache: 'no-store',
     });
     const data = await res.json().catch(() => ({}));
     if (res.status === 401) return showLogin('That password is not right.');
@@ -25,10 +29,14 @@ async function load() {
       localStorage.setItem('stats-password', password);
     } catch {}
     render(data);
+    done = 'Updated ✓';
   } catch (err) {
     showMessage(`Could not load the numbers (${err.message}). Try Refresh.`);
   } finally {
-    $('refresh').disabled = false;
+    btn.disabled = false;
+    btn.textContent = done;
+    // Show the tick briefly so a refresh with no new scans still looks like it worked.
+    if (done !== 'Refresh') setTimeout(() => (btn.textContent = 'Refresh'), 1500);
   }
 }
 
@@ -49,7 +57,7 @@ function showMessage(text) {
 function render({ totals, posters: byPoster, days, devices }) {
   $('login').hidden = $('message').hidden = true;
   $('dash').hidden = $('controls').hidden = false;
-  $('updated').textContent = `${test ? 'Test data from preview links' : 'Live'} · updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  $('updated').textContent = `${test ? 'Test data from preview links' : 'Live'} · updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
   for (const k of ['scan', 'people', 'start', 'found', 'save', 'link']) $(`t-${k}`).textContent = fmt(totals[k]);
 
   // Every poster, including ones nobody has scanned yet.
