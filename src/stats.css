@@ -24,7 +24,10 @@ h2 { margin: 0; font-size: 17px; }
 .sub { margin: 4px 0 0; color: var(--faint); font-size: 13px; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
 button { font: inherit; cursor: pointer; }
-.controls { display: flex; gap: 8px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+select.ghost { appearance: none; -webkit-appearance: none; font: inherit; font-size: 14px; }
+.days .col { cursor: pointer; }
+.days .col.on span { background: var(--fg); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
 .seg button { border: 0; background: none; color: var(--muted); padding: 6px 14px; border-radius: 999px; font-size: 14px; }
 .seg button[aria-pressed='true'] { background: var(--fg); color: var(--bg); font-weight: 600; }
