@@ -5,15 +5,21 @@ const nameOf = Object.fromEntries(posters.map((p) => [p.slug, p.name]));
 const fmt = (n) => n.toLocaleString();
 let password = '';
 let test = false;
+let day = ''; // '' = all days, else YYYY-MM-DD
 try {
   password = localStorage.getItem('stats-password') || '';
 } catch {}
 
 async function load() {
-  $('refresh').disabled = true;
+  const btn = $('refresh');
+  btn.disabled = true;
+  btn.textContent = 'Refreshing…';
+  let done = 'Refresh';
   try {
-    const res = await fetch(`/.netlify/functions/stats${test ? '?test=1' : ''}`, {
+    const q = new URLSearchParams({ ...(test && { test: '1' }), ...(day && { day }) });
+    const res = await fetch(`/.netlify/functions/stats?${q}`, {
       headers: { 'x-stats-password': password },
+      cache: 'no-store',
     });
     const data = await res.json().catch(() => ({}));
     if (res.status === 401) return showLogin('That password is not right.');
@@ -25,10 +31,14 @@ async function load() {
       localStorage.setItem('stats-password', password);
     } catch {}
     render(data);
+    done = 'Updated ✓';
   } catch (err) {
     showMessage(`Could not load the numbers (${err.message}). Try Refresh.`);
   } finally {
-    $('refresh').disabled = false;
+    btn.disabled = false;
+    btn.textContent = done;
+    // Show the tick briefly so a refresh with no new scans still looks like it worked.
+    if (done !== 'Refresh') setTimeout(() => (btn.textContent = 'Refresh'), 1500);
   }
 }
 
@@ -49,7 +59,7 @@ function showMessage(text) {
 function render({ totals, posters: byPoster, days, devices }) {
   $('login').hidden = $('message').hidden = true;
   $('dash').hidden = $('controls').hidden = false;
-  $('updated').textContent = `${test ? 'Test data from preview links' : 'Live'} · updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  $('updated').textContent = `${test ? 'Test data from preview links' : 'Live'} · ${day ? label(day) : 'all days'} · updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
   for (const k of ['scan', 'people', 'start', 'found', 'save', 'link']) $(`t-${k}`).textContent = fmt(totals[k]);
 
   // Every poster, including ones nobody has scanned yet.
@@ -67,6 +77,7 @@ function render({ totals, posters: byPoster, days, devices }) {
     .join('');
 
   renderDays(days);
+  renderDayPicker(days);
 
   const dev = [['iPhone / iPad', devices.iphone], ['Android', devices.android], ['Other', devices.other]];
   const dmax = Math.max(1, ...dev.map((d) => d[1]));
@@ -90,11 +101,24 @@ function renderDays(days) {
     list.push([k, days[k] || 0]);
   }
   const max = Math.max(1, ...list.map((d) => d[1]));
-  const label = (k) => new Date(k + 'T12:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const html = list
-    .map(([k, n]) => `<div class="col" data-tip="${label(k)}: ${fmt(n)} scans"><span style="height:${(n / max) * 100}%"></span></div>`)
+    .map(([k, n]) => `<div class="col${k === day ? ' on' : ''}" data-day="${k}" data-tip="${label(k)}: ${fmt(n)} scans"><span style="height:${(n / max) * 100}%"></span></div>`)
     .join('');
   $('days').outerHTML = `<div id="days"><div class="days">${html}</div><div class="day-labels"><span>${label(list[0][0])}</span><span>${label(list.at(-1)[0])}</span></div></div>`;
+}
+
+const label = (k) => new Date(k + 'T12:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+// "All days" plus every day with scans, newest first.
+function renderDayPicker(days) {
+  const keys = [...new Set([...Object.keys(days), ...(day ? [day] : [])])].sort().reverse();
+  $('day').innerHTML = ['<option value="">All days</option>', ...keys.map((k) => `<option value="${k}">${label(k)} (${fmt(days[k] || 0)})</option>`)].join('');
+  $('day').value = day;
+}
+
+function setDay(next) {
+  day = next;
+  load();
 }
 
 function esc(s) {
@@ -118,6 +142,12 @@ $('login').addEventListener('submit', (e) => {
   load();
 });
 $('refresh').addEventListener('click', load);
+$('day').addEventListener('change', (e) => setDay(e.target.value));
+// Tap a bar to see that day; tap it again to go back to all days.
+document.addEventListener('click', (e) => {
+  const col = e.target.closest?.('#days .col');
+  if (col) setDay(col.dataset.day === day ? '' : col.dataset.day);
+});
 for (const [id, value] of [['mode-live', false], ['mode-test', true]]) {
   $(id).addEventListener('click', () => {
     test = value;
