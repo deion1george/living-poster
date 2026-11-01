@@ -54,6 +54,12 @@
           </table>
         </section>
 
+        <section class="panel">
+          <h2>Scans by hour</h2>
+          <p class="sub" id="hours-sub">New York time. Hover or tap a bar for the count.</p>
+          <div id="hours"></div>
+        </section>
+
         <div class="two">
           <section class="panel">
             <h2>Scans per day</h2>
@@ -65,6 +71,26 @@
             <div id="devices" class="hbars"></div>
           </section>
         </div>
+
+        <section class="panel">
+          <h2>Phones that scanned</h2>
+          <p class="sub">Each row is one phone (no names). Hide your own and test phones to leave them out of every number above; you can show them again any time.</p>
+          <p class="this-phone" id="this-phone" hidden></p>
+          <table class="rank phones">
+            <thead><tr><th>Phone</th><th>First</th><th>Last</th><th>Scans</th><th>Posters</th><th></th></tr></thead>
+            <tbody id="phones"></tbody>
+          </table>
+          <button id="phones-more" class="ghost more" hidden></button>
+        </section>
+
+        <section class="panel">
+          <h2>Export</h2>
+          <p class="sub">Spreadsheet files (CSV) for the day and data shown above. Times are New York time.</p>
+          <div class="export">
+            <button id="export-steps" class="ghost">Every scan, with times</button>
+            <button id="export-posters" class="ghost">Poster summary</button>
+          </div>
+        </section>
       </section>
     </main>
     <div id="tip" class="tip" hidden></div>

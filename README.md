@@ -82,6 +82,13 @@ stores one Netlify Blob per step (no names or IPs). `netlify/functions/stats.mjs
 adds them up. Deploy previews write to a separate "Test" store, so testing
 doesn't change the live numbers.
 
+Every step is stored with its exact time, so the dashboard also shows scans by
+hour (New York time) and a "Phones that scanned" list with each phone's first
+and last scan. Hide a phone there (yours, or a test phone) to leave it out of
+every number; hiding only filters the view and never deletes anything. Opening
+/stats on a phone you scanned with marks it "this phone". Export downloads a CSV
+of every step with its time, or a per-poster summary, for the view on screen.
+
 Setup, once: in Netlify, Site configuration → Environment variables, add
 `STATS_PASSWORD` (any password you like), then redeploy.
 
