@@ -10,3 +10,8 @@ export function scansStore(context, test) {
 
 export const TIME_ZONE = 'America/New_York';
 export const EVENTS = ['scan', 'start', 'found', 'save', 'link'];
+
+// Dashboard settings (which phones are yours and left out of the numbers).
+export function settingsStore() {
+  return getStore({ name: 'stats-settings', consistency: 'strong' });
+}

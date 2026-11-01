@@ -6,9 +6,20 @@ const fmt = (n) => n.toLocaleString();
 let password = '';
 let test = false;
 let day = ''; // '' = all days, else YYYY-MM-DD
+let last = null; // latest response, for the CSV export
+let allPhones = false;
+let myPhone = ''; // this browser's id from scanning a poster on this site
 try {
   password = localStorage.getItem('stats-password') || '';
+  myPhone = localStorage.getItem('lp-visitor') || '';
 } catch {}
+const TZ = 'America/New_York';
+const api = (q = {}, init = {}) =>
+  fetch(`/.netlify/functions/stats?${new URLSearchParams({ ...(test && { test: '1' }), ...(day && { day }), ...q })}`, {
+    ...init,
+    headers: { 'x-stats-password': password, ...init.headers },
+    cache: 'no-store',
+  });
 
 async function load() {
   const btn = $('refresh');
@@ -16,11 +27,7 @@ async function load() {
   btn.textContent = 'Refreshing…';
   let done = 'Refresh';
   try {
-    const q = new URLSearchParams({ ...(test && { test: '1' }), ...(day && { day }) });
-    const res = await fetch(`/.netlify/functions/stats?${q}`, {
-      headers: { 'x-stats-password': password },
-      cache: 'no-store',
-    });
+    const res = await api();
     const data = await res.json().catch(() => ({}));
     if (res.status === 401) return showLogin('That password is not right.');
     if (data.error === 'setup') {
@@ -56,7 +63,9 @@ function showMessage(text) {
   $('message').textContent = text;
 }
 
-function render({ totals, posters: byPoster, days, devices }) {
+function render(data) {
+  last = data;
+  const { totals, posters: byPoster, days, devices } = data;
   $('login').hidden = $('message').hidden = true;
   $('dash').hidden = $('controls').hidden = false;
   $('updated').textContent = `${test ? 'Test data from preview links' : 'Live'} · ${day ? label(day) : 'all days'} · updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
@@ -78,6 +87,8 @@ function render({ totals, posters: byPoster, days, devices }) {
 
   renderDays(days);
   renderDayPicker(days);
+  renderHours(data.hours || []);
+  renderPhones(data.phones || []);
 
   const dev = [['iPhone / iPad', devices.iphone], ['Android', devices.android], ['Other', devices.other]];
   const dmax = Math.max(1, ...dev.map((d) => d[1]));
@@ -105,6 +116,116 @@ function renderDays(days) {
     .map(([k, n]) => `<div class="col${k === day ? ' on' : ''}" data-day="${k}" data-tip="${label(k)}: ${fmt(n)} scans"><span style="height:${(n / max) * 100}%"></span></div>`)
     .join('');
   $('days').outerHTML = `<div id="days"><div class="days">${html}</div><div class="day-labels"><span>${label(list[0][0])}</span><span>${label(list.at(-1)[0])}</span></div></div>`;
+}
+
+const hourLabel = (h) => `${h % 12 || 12}${h < 12 ? 'am' : 'pm'}`;
+const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: TZ });
+const shortDate = (ms) => new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric', timeZone: TZ });
+
+// Hours from the first to the last one with scans, so a 1-6 PM event fills the chart.
+function renderHours(hours) {
+  const used = hours.map((n, h) => (n ? h : -1)).filter((h) => h >= 0);
+  if (!used.length) {
+    $('hours').innerHTML = '<p class="empty">No scans for this view.</p>';
+    return;
+  }
+  const from = Math.max(0, used[0] - 1);
+  const to = Math.min(23, used.at(-1) + 1);
+  const max = Math.max(1, ...hours);
+  let cols = '';
+  let labels = '';
+  for (let h = from; h <= to; h++) {
+    const n = hours[h];
+    cols += `<div class="col" data-tip="${hourLabel(h)}–${hourLabel((h + 1) % 24)}: ${fmt(n)} scan${n === 1 ? '' : 's'}"><b>${n || ''}</b><span style="height:${(n / max) * 100}%"></span></div>`;
+    labels += `<span>${hourLabel(h)}</span>`;
+  }
+  $('hours').innerHTML = `<div class="days hours">${cols}</div><div class="hour-labels">${labels}</div>`;
+  $('hours-sub').textContent = `New York time${day ? `, ${label(day)}` : ', all days added together'}. Your hidden phones are left out.`;
+}
+
+// One row per phone. Hidden phones stay listed (greyed) so they can be shown again.
+function renderPhones(phones) {
+  const mine = phones.find((p) => p.id === myPhone);
+  $('this-phone').hidden = !myPhone;
+  if (myPhone) {
+    $('this-phone').innerHTML = mine
+      ? `The phone you're on now is <b>${phoneName(mine)}</b>${mine.hidden ? ' (hidden).' : '.'} <button class="ghost small" data-phone="${esc(mine.id)}" data-hide="${mine.hidden ? '' : '1'}">${mine.hidden ? 'Show it again' : 'Hide this phone'}</button>`
+      : `The phone you're on now has no scans in this view.`;
+  }
+  const limit = 12;
+  const shown = allPhones ? phones : phones.slice(0, limit);
+  const multiDay = !day;
+  const when = (ms) => (ms ? (multiDay ? `${shortDate(ms)}, ${clock(ms)}` : clock(ms)) : '–');
+  $('phones').innerHTML = shown.length
+    ? shown
+        .map(
+          (p) => `<tr class="${p.hidden ? 'zero' : ''}">
+        <td>${phoneName(p)}${p.id === myPhone ? ' <span class="tag">this phone</span>' : ''}${p.hidden ? ' <span class="tag">hidden</span>' : ''}</td>
+        <td>${when(p.first)}</td><td>${when(p.last)}</td><td>${fmt(p.scans)}</td><td>${fmt(p.posters)}</td>
+        <td><button class="ghost small" data-phone="${esc(p.id)}" data-hide="${p.hidden ? '' : '1'}">${p.hidden ? 'Show' : 'Hide'}</button></td></tr>`,
+        )
+        .join('')
+    : '<tr><td colspan="6" class="empty">No phones in this view.</td></tr>';
+  $('phones-more').hidden = phones.length <= limit;
+  $('phones-more').textContent = allPhones ? 'Show fewer' : `Show all ${phones.length} phones`;
+}
+
+const deviceName = { iphone: 'iPhone', android: 'Android', other: 'Other' };
+const phoneName = (p) => `${deviceName[p.device] || 'Phone'} ${esc(p.id.slice(0, 4))}`;
+
+async function setHidden(id, hide) {
+  try {
+    const res = await api({}, { method: 'POST', body: JSON.stringify(hide ? { hide: id } : { show: id }) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } catch (err) {
+    return showMessage(`Could not change that phone (${err.message}). Try Refresh.`);
+  }
+  load();
+}
+
+// CSV the way spreadsheets expect: quoted where needed, BOM so Excel reads UTF-8.
+function download(name, table) {
+  const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  const csv = '\ufeff' + table.map((r) => r.map(cell).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  setTimeout(() => (URL.revokeObjectURL(a.href), a.remove()), 1000);
+}
+
+const stepName = { scan: 'Scanned QR', start: 'Tapped start', found: 'Poster found', save: 'Saved video', link: 'Website tap' };
+const fileTag = () => `${test ? 'test' : 'live'}-${day || 'all-days'}`;
+
+async function exportSteps() {
+  const btn = $('export-steps');
+  btn.disabled = true;
+  try {
+    const res = await api({ rows: '1' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { rows } = await res.json();
+    download(`poster-scans-${fileTag()}.csv`, [
+      ['Date', 'Time (New York)', 'Poster', 'Step', 'Phone type', 'Phone', 'Hidden phone'],
+      ...rows.map((r) => [r.day, r.time, nameOf[r.slug] || r.slug, stepName[r.event] || r.event, deviceName[r.device] || r.device, r.phone, r.hidden ? 'yes' : '']),
+    ]);
+  } catch (err) {
+    showMessage(`Could not export (${err.message}). Try again.`);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function exportPosters() {
+  if (!last) return;
+  const rows = [...new Set([...posters.map((p) => p.slug), ...Object.keys(last.posters)])]
+    .map((slug) => ({ name: nameOf[slug] || slug, scan: 0, people: 0, start: 0, found: 0, save: 0, link: 0, ...last.posters[slug] }))
+    .sort((a, b) => b.scan - a.scan || a.name.localeCompare(b.name));
+  download(`poster-summary-${fileTag()}.csv`, [
+    ['Poster', 'Scans', 'People', 'Tapped start', 'Poster found', 'Videos saved', 'Website taps'],
+    ...rows.map((r) => [r.name, r.scan, r.people, r.start, r.found, r.save, r.link]),
+    ['Total', last.totals.scan, last.totals.people, last.totals.start, last.totals.found, last.totals.save, last.totals.link],
+  ]);
 }
 
 const label = (k) => new Date(k + 'T12:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -142,6 +263,16 @@ $('login').addEventListener('submit', (e) => {
   load();
 });
 $('refresh').addEventListener('click', load);
+$('export-steps').addEventListener('click', exportSteps);
+$('export-posters').addEventListener('click', exportPosters);
+$('phones-more').addEventListener('click', () => {
+  allPhones = !allPhones;
+  if (last) renderPhones(last.phones || []);
+});
+document.addEventListener('click', (e) => {
+  const b = e.target.closest?.('button[data-phone]');
+  if (b) setHidden(b.dataset.phone, b.dataset.hide === '1');
+});
 $('day').addEventListener('change', (e) => setDay(e.target.value));
 // Tap a bar to see that day; tap it again to go back to all days.
 document.addEventListener('click', (e) => {
